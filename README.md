@@ -10,6 +10,9 @@ A small, minimalist rich-text notebook for the desktop, written in Rust.
   dashed, wavy, zig-zag), strikethrough, text color and highlight color.
 - **Plain-text file format.** Notebooks are readable and easy to diff. See
   [FORMAT.md](FORMAT.md).
+- **Companions.** Pick a pixel-art animal in Settings (fox, rabbits, deer,
+  frogs, turtle, capybara, penguin, chickens, ducks, pigs, sheep,
+  cats, dogs) to wander along the bottom of the window.
 - **GPU rendering.** Built on [egui](https://github.com/emilk/egui) and
   eframe, using the **wgpu** backend.
 
@@ -32,6 +35,7 @@ cargo run --release -- notes.hzn    # opens notes.hzn, or creates it on first sa
 | Save / Save as         | Ctrl+S / Ctrl+Shift+S |
 | Open / New notebook    | Ctrl+O / Ctrl+N   |
 | Back to home screen    | Ctrl+W            |
+| Settings               | Ctrl+,            |
 
 If you pick a style with no text selected, it applies to what you type next.
 Right-click a chapter to move or delete it. Star a notebook from the home
@@ -47,6 +51,8 @@ src/
   app/home.rs  home screen: create/open, starred and recent notebooks
   autosave.rs crash-recovery copies (+ tests)
   library.rs recent/starred list, saved to ~/.config/hazelnut/library
+  settings.rs preferences, saved to ~/.config/hazelnut/settings
+  pets.rs    companion animals: sprite sheets, animation, wandering
   model.rs   Notebook / Chapter / Style
   format.rs  .hzn reader and writer (+ tests)
   edit.rs    keeps per-character styles in sync with edits (+ tests)
@@ -54,6 +60,7 @@ src/
   theme.rs   palette, fonts, widget styling
 assets/
   fonts/     Noto Sans + OFL.txt (SIL Open Font License)
+  pets/      pixel-art asset pack by EmanuelleDev (not MIT, see below)
   welcome.hzn
 ```
 
@@ -72,5 +79,14 @@ assets/
 
 ## License
 
-Hazelnut is released under the [MIT License](LICENSE).
+Hazelnut's code is released under the [MIT License](LICENSE).
 Copyright © 2026 OsakiTsukiko.
+
+### Third-party assets
+
+- **Fonts:** Noto Sans, SIL Open Font License 1.1 (`assets/fonts/OFL.txt`).
+- **Pet sprites:** by **EmanuelleDev** —
+  [emanuelledev.itch.io](https://emanuelledev.itch.io). These are *not*
+  covered by the MIT license. The pack's license allows use in commercial and
+  non-commercial projects with credit, but the assets may not be resold or
+  redistributed on their own, even if modified.

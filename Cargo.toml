@@ -1,6 +1,6 @@
 [package]
 name = "hazelnut"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 authors = ["OsakiTsukiko"]
 license = "MIT"
@@ -10,4 +10,5 @@ readme = "README.md"
 [dependencies]
 eframe = { version = "0.33.3", default-features = false, features = ["wgpu", "wayland", "x11", "default_fonts", "accesskit"] }
 egui-wgpu = "0.33.3"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
 rfd = "0.18.0"

@@ -6,7 +6,9 @@ use crate::edit;
 use crate::format;
 use crate::library::{self, Library};
 use crate::model::{Attr, Chapter, LineStyle, Notebook, Style};
+use crate::pets::{self, Pet, Sprites};
 use crate::render;
+use crate::settings::Settings;
 use crate::theme::{self, ACCENT, BG, BORDER, FAINT, HOVER, MUTED, SIDEBAR, SURFACE, TEXT};
 use eframe::egui::{
     self, Align, Align2, Color32, CornerRadius, FontId, Frame, Id, Key, KeyboardShortcut, Layout, Margin, Modifiers,
@@ -57,6 +59,7 @@ enum Modal {
     DeleteChapter(usize),
     Create { name: String, focus: bool },
     About { show_license: bool },
+    Settings,
     /// An autosave exists for this notebook: offer to open it instead.
     Recover { path: PathBuf, saved_at: u64 },
 }
@@ -75,6 +78,7 @@ enum HomeAction {
     OpenDialog,
     Tour,
     About,
+    Settings,
 }
 
 enum ChapterAction {
@@ -113,6 +117,9 @@ pub struct HazelnutApp {
     /// Content of the last autosave, to skip identical writes.
     last_autosave: Option<String>,
     next_autosave_at: f64,
+    settings: Settings,
+    sprites: Sprites,
+    pet: Option<Pet>,
 }
 
 impl HazelnutApp {
@@ -137,7 +144,11 @@ impl HazelnutApp {
             kept_selection: None,
             last_autosave: None,
             next_autosave_at: 0.0,
+            settings: Settings::load(),
+            sprites: Sprites::default(),
+            pet: None,
         };
+        app.pet = app.settings.pet.as_deref().and_then(pets::find).map(Pet::new);
         if let Some(p) = path {
             if p.exists() {
                 app.open(&p, 0.0);
@@ -514,6 +525,9 @@ impl HazelnutApp {
         if pressed(cmd, Key::N) {
             self.guarded(ctx, After::NewNotebook);
         }
+        if pressed(cmd, Key::Comma) {
+            self.modal = Some(Modal::Settings);
+        }
         if self.screen == Screen::Home {
             return;
         }
@@ -683,6 +697,9 @@ impl HazelnutApp {
                 ui.set_min_width(190.0);
                 if menu_item(ui, "Save as…", "Ctrl+Shift+S") {
                     self.save_as(ctx);
+                }
+                if menu_item(ui, "Settings…", "Ctrl+,") {
+                    self.modal = Some(Modal::Settings);
                 }
                 if menu_item(ui, "About Hazelnut", "") {
                     self.modal = Some(Modal::About { show_license: false });
@@ -1108,6 +1125,91 @@ impl HazelnutApp {
         }
     }
 
+    // ------------------------------------------------------------ companion
+
+    fn set_pet(&mut self, species: Option<usize>) {
+        self.settings.pet = species.map(|i| pets::SPECIES[i].id.to_owned());
+        self.settings.save();
+        self.pet = species.map(Pet::new);
+    }
+
+    /// The companion walks along the bottom edge of the window, above the
+    /// panels but below the toolbar, menus and dialogs.
+    fn paint_pet(&mut self, ctx: &egui::Context) {
+        let Some(pet) = &mut self.pet else { return };
+        // Walk along the bottom edge of the window.
+        let area = ctx.content_rect().shrink(1.0);
+        let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, Id::new("hz-pet")));
+        pet.update_and_paint(ctx, &painter, &mut self.sprites, area);
+    }
+
+    fn settings_ui(&mut self, ui: &mut Ui, ctx: &egui::Context, keep: &mut bool) {
+        ui.set_width(530.0);
+        ui.label(RichText::new("Settings").size(17.0).family(theme::medium()).color(TEXT));
+        ui.add_space(16.0);
+        let g = spaced_label(ui, "COMPANION", 10.0, FAINT);
+        ui.label(g);
+        ui.add_space(2.0);
+        ui.label(RichText::new("A little friend that wanders along the bottom of the window.").size(13.0).color(MUTED));
+        ui.add_space(10.0);
+
+        let current = self.pet.as_ref().map(|p| p.species);
+        let mut picked: Option<Option<usize>> = None;
+        let choices: Vec<Option<usize>> = std::iter::once(None).chain((0..pets::SPECIES.len()).map(Some)).collect();
+        for row in choices.chunks(7) {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                for &choice in row {
+                    let (rect, resp) = ui.allocate_exact_size(vec2(72.0, 82.0), Sense::click());
+                    let selected = choice == current;
+                    let p = ui.painter();
+                    if selected {
+                        p.rect_filled(rect, 10.0, ACCENT.gamma_multiply(0.12));
+                        p.rect_stroke(rect, 10.0, Stroke::new(1.5_f32, ACCENT), egui::StrokeKind::Inside);
+                    } else if resp.hovered() {
+                        p.rect_filled(rect, 10.0, HOVER);
+                    }
+                    let foot = pos2(rect.center().x, rect.top() + 58.0);
+                    let name = match choice {
+                        Some(i) => {
+                            pets::thumbnail(ctx, ui.painter(), &mut self.sprites, i, foot);
+                            pets::SPECIES[i].name
+                        }
+                        None => {
+                            let c = pos2(rect.center().x, rect.top() + 36.0);
+                            let s = Stroke::new(1.3_f32, FAINT);
+                            ui.painter().circle_stroke(c, 11.0, s);
+                            ui.painter().line_segment([c + vec2(-7.5, 7.5), c + vec2(7.5, -7.5)], s);
+                            "None"
+                        }
+                    };
+                    ui.painter().text(
+                        pos2(rect.center().x, rect.bottom() - 12.0),
+                        Align2::CENTER_CENTER,
+                        name,
+                        FontId::proportional(11.5),
+                        if selected { TEXT } else { MUTED },
+                    );
+                    if resp.on_hover_cursor(egui::CursorIcon::PointingHand).clicked() {
+                        picked = Some(choice);
+                    }
+                }
+            });
+        }
+        if let Some(choice) = picked {
+            self.set_pet(choice);
+        }
+
+        ui.add_space(18.0);
+        ui.horizontal(|ui| {
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                if primary_button(ui, "Done").clicked() {
+                    *keep = false;
+                }
+            });
+        });
+    }
+
     // ------------------------------------------------------------ modals
 
     fn modals(&mut self, ctx: &egui::Context) {
@@ -1128,6 +1230,9 @@ impl HazelnutApp {
                 match &mut modal {
                     Modal::About { show_license } => {
                         about(ui, show_license, &mut keep);
+                    }
+                    Modal::Settings => {
+                        self.settings_ui(ui, ctx, &mut keep);
                     }
                     Modal::Create { name, focus } => {
                         ui.label(RichText::new("New notebook").size(17.0).family(theme::medium()).color(TEXT));
@@ -1289,6 +1394,7 @@ impl eframe::App for HazelnutApp {
             }
         }
         self.modals(ctx);
+        self.paint_pet(ctx);
         self.autosave_tick(ctx);
         self.window_border(ctx);
     }
@@ -1413,6 +1519,7 @@ fn about(ui: &mut Ui, show_license: &mut bool, keep: &mut bool) {
     row(ui, "LICENSE", "MIT");
     row(ui, "FONTS", "Noto Sans · SIL Open Font License 1.1");
     row(ui, "BUILT WITH", "Rust, egui and wgpu");
+    row(ui, "PET SPRITES", "EmanuelleDev · emanuelledev.itch.io");
 
     if *show_license {
         ui.add_space(12.0);

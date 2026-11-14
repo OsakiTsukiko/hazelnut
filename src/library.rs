@@ -153,7 +153,7 @@ fn peek_title(path: &Path) -> Option<String> {
         .find_map(|l| l.strip_prefix("%title").map(|t| t.trim().to_owned()))
 }
 
-fn config_dir() -> Option<PathBuf> {
+pub fn config_dir() -> Option<PathBuf> {
     let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
     if cfg!(windows) {
         env("APPDATA")

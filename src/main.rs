@@ -6,7 +6,9 @@ mod edit;
 mod format;
 mod library;
 mod model;
+mod pets;
 mod render;
+mod settings;
 mod theme;
 
 use eframe::egui;

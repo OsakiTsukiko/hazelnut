@@ -89,6 +89,9 @@ impl HazelnutApp {
                             if link(ui, "Take the tour  ›").clicked() {
                                 action = Some(HomeAction::Tour);
                             }
+                            if link(ui, "Settings").clicked() {
+                                action = Some(HomeAction::Settings);
+                            }
                             if link(ui, "About").clicked() {
                                 action = Some(HomeAction::About);
                             }
@@ -109,6 +112,7 @@ impl HazelnutApp {
             Some(HomeAction::OpenDialog) => self.proceed(ctx, After::OpenDialog),
             Some(HomeAction::Tour) => self.proceed(ctx, After::Tour),
             Some(HomeAction::About) => self.modal = Some(Modal::About { show_license: false }),
+            Some(HomeAction::Settings) => self.modal = Some(Modal::Settings),
             None => {}
         }
     }
