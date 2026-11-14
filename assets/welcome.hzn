@@ -1,0 +1,30 @@
+%hazelnut 1
+%title Welcome to Hazelnut
+%% Lines starting with %% are comments and are ignored.
+
+%chapter Getting started
+Hazelnut is a small, quiet place for your notes. A {b|notebook} is a single file, and it holds {b|chapters}, which you'll find in the sidebar on the left.
+
+Select some text and use the toolbar on the right, right-click it, or use the keyboard:
+
+  {b|Bold} — Ctrl+B
+  {i|Italic} — Ctrl+I
+  {u|Underline} — Ctrl+U
+  {s|Strikethrough} — Ctrl+Shift+X
+  Clear formatting — Ctrl+\
+
+Text can be {fg=#ef6f6c|red}, {fg=#f0a35e|orange}, {fg=#e9cf6a|yellow}, {fg=#8fcf7a|green}, {fg=#6aa8f0|blue} or {fg=#b48ef0|purple}, and you can {bg=#574c1e|highlight} {bg=#22375a|anything} you like. Styles {b,i,u,fg=#d4a373|combine freely}.
+
+Underlines come in {u|solid}, {u=double|double}, {u=dotted|dotted}, {u=dashed|dashed}, {u=wavy|wavy} and {u=zigzag|zig-zag} — pick one with the button under {u|U}.
+
+With nothing selected, pick a style and just keep typing — it applies to what you write next.
+
+%chapter Chapters
+Press Ctrl+T or the {b|+} next to "Chapters" to add a new one. Right-click a chapter in the sidebar to move or delete it. Ctrl+PgUp / Ctrl+PgDn flips between chapters.
+
+Click a chapter's title at the top of the page to rename it.
+
+%chapter Saving
+Ctrl+S saves, Ctrl+Shift+S saves a copy somewhere else, Ctrl+O opens another notebook. You can also drop a {i|.hzn} file onto the window.
+
+Notebooks are plain text, so they're easy to back up, diff and sync. A bold word is written as \{b|word\}, a red one as \{fg=#ef6f6c|word\}. See {u|FORMAT.md} for the details.
