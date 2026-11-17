@@ -29,8 +29,8 @@ impl HazelnutApp {
                         ui.add_space(36.0);
 
                         ui.horizontal(|ui| {
-                            let (r, _) = ui.allocate_exact_size(vec2(8.0, 8.0), Sense::hover());
-                            ui.painter().circle_filled(r.center(), 4.0, ACCENT);
+                            let (r, _) = ui.allocate_exact_size(vec2(32.0, 32.0), Sense::hover());
+                            theme::paint_icon(ui.painter(), r);
                             ui.add_space(4.0);
                             let g = spaced_label(ui, "HAZELNUT", 10.5, FAINT);
                             ui.label(g);

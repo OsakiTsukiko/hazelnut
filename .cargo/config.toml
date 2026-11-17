@@ -1,2 +1,2 @@
 [alias]
-install-release = ["install", "--path", ".", "--profile", "release", "--locked", "--force"]
+install-release = ["run", "--quiet", "--manifest-path", "xtask/Cargo.toml", "--target-dir", "target/install", "--"]

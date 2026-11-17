@@ -24,6 +24,8 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_title("Hazelnut")
             .with_app_id("hazelnut")
+            .with_icon(eframe::icon_data::from_png_bytes(include_bytes!("../assets/icons/hazelnut.png"))
+                .expect("bundled Hazelnut icon"))
             .with_inner_size([1180.0, 780.0])
             .with_min_inner_size([680.0, 440.0])
             // Hazelnut draws its own title bar (see app/titlebar.rs).

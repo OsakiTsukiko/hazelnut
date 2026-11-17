@@ -48,8 +48,21 @@ Build and install the release version from the repository root:
 cargo install-release
 ```
 
-This uses the locked dependencies and replaces any existing Hazelnut installation
-in Cargo's binary directory (usually `~/.cargo/bin`). Run it with `hazelnut`.
+This builds with locked dependencies and replaces the installed release binary
+in Cargo's binary directory (usually `~/.cargo/bin`). On Linux, it also creates
+`~/.local/bin/hazelnut` and installs a GNOME application launcher. Run `hazelnut`
+in a terminal or search for **Hazelnut** in GNOME.
+
+If you already installed the binary, add desktop/terminal integration without
+rebuilding:
+
+```sh
+cargo install-release --desktop-only
+```
+
+Your shell must include `~/.local/bin` or Cargo's binary directory in `PATH`.
+The installer reports if neither is available. The GNOME launcher uses the
+absolute binary path, so it works independently of your shell's `PATH`.
 
 ## Keyboard shortcuts
 

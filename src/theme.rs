@@ -202,3 +202,19 @@ pub fn mono_font_bytes() -> &'static [u8] {
     static FONTS: std::sync::OnceLock<FontDefinitions> = std::sync::OnceLock::new();
     FONTS.get_or_init(FontDefinitions::default).font_data["Hack"].font.as_ref()
 }
+
+/// Reuse one uploaded icon texture across the app's branding surfaces.
+pub fn paint_icon(painter: &egui::Painter, rect: egui::Rect) {
+    let ctx = painter.ctx();
+    let id = egui::Id::new("hazelnut-brand-icon");
+    let texture = ctx.data(|data| data.get_temp::<egui::TextureHandle>(id)).unwrap_or_else(|| {
+        let image = image::load_from_memory(include_bytes!("../assets/icons/hazelnut.png"))
+            .expect("bundled Hazelnut icon").into_rgba8();
+        let size = [image.width() as usize, image.height() as usize];
+        let image = egui::ColorImage::from_rgba_unmultiplied(size, image.as_raw());
+        let texture = ctx.load_texture("hazelnut-icon", image, egui::TextureOptions::LINEAR);
+        ctx.data_mut(|data| data.insert_temp(id, texture.clone()));
+        texture
+    });
+    painter.image(texture.id(), rect, egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)), Color32::WHITE);
+}
