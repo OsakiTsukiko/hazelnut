@@ -42,6 +42,15 @@ cargo run --release                 # opens the home screen
 cargo run --release -- notes.hzn    # opens notes.hzn, or creates it on first save
 ```
 
+Build and install the release version from the repository root:
+
+```sh
+cargo install-release
+```
+
+This uses the locked dependencies and replaces any existing Hazelnut installation
+in Cargo's binary directory (usually `~/.cargo/bin`). Run it with `hazelnut`.
+
 ## Keyboard shortcuts
 
 | Action                 | Shortcut          |

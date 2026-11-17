@@ -1,0 +1,2 @@
+[alias]
+install-release = ["install", "--path", ".", "--profile", "release", "--locked", "--force"]
