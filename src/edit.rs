@@ -56,6 +56,21 @@ pub fn style_at(styles: &[Style], at: usize) -> Style {
     }
 }
 
+/// Newly entered text inherits visual styling, not adjacent escape flags.
+pub fn typing_style(styles: &[Style], at: usize, pending: Option<Style>) -> Style {
+    Style { escaped: false, ..pending.unwrap_or_else(|| style_at(styles, at)) }
+}
+
+/// Apply typing or paste, escaping only syntax punctuation while literal
+/// typing is enabled. Ordinary letters and spaces keep their usual meaning.
+pub fn apply_typing(styles: &[Style], change: Change, style: Option<Style>, text: &str, literal: bool) -> Vec<Style> {
+    let mut out = apply(styles, change, style);
+    for (i, c) in text.chars().skip(change.at).take(change.inserted).enumerate() {
+        out[change.at + i].escaped = literal && crate::blocks::is_syntax_char(c);
+    }
+    out
+}
+
 /// Apply `change` to `styles`, giving inserted chars `insert_style`
 /// (or the inherited style if `None`).
 pub fn apply(styles: &[Style], change: Change, insert_style: Option<Style>) -> Vec<Style> {
@@ -104,7 +119,7 @@ pub fn set_underline(styles: &mut [Style], range: Range<usize>, kind: Option<Lin
 
 pub fn clear(styles: &mut [Style], range: Range<usize>) {
     let range = clamp(range, styles.len());
-    styles[range].iter_mut().for_each(|s| *s = Style::default());
+    styles[range].iter_mut().for_each(|s| *s = Style { escaped: s.escaped, ..Default::default() });
 }
 
 /// Char range of the word at (or just before) char index `at`.

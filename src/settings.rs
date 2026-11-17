@@ -7,6 +7,8 @@ use std::path::PathBuf;
 pub struct Settings {
     /// Id of the companion animal (see `pets::SPECIES`), if any.
     pub pet: Option<String>,
+    /// Mark newly entered characters as literal in the normal editor.
+    pub literal_text: bool,
 }
 
 fn file() -> Option<PathBuf> {
@@ -20,6 +22,9 @@ impl Settings {
         for line in src.lines() {
             let Some((k, v)) = line.split_once('=') else { continue };
             // Unknown keys are ignored.
+            if k.trim() == "literal_text" {
+                s.literal_text = v.trim() == "true";
+            }
             if k.trim() == "pet" {
                 s.pet = Some(v.trim().to_owned()).filter(|v| !v.is_empty() && v != "none");
             }
@@ -29,7 +34,7 @@ impl Settings {
 
     pub fn save(&self) {
         let Some(file) = file() else { return };
-        let out = format!("pet = {}\n", self.pet.as_deref().unwrap_or("none"));
+        let out = format!("pet = {}\nliteral_text = {}\n", self.pet.as_deref().unwrap_or("none"), self.literal_text);
         if let Some(dir) = file.parent() {
             let _ = std::fs::create_dir_all(dir);
         }

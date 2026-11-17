@@ -1,8 +1,10 @@
 %hazelnut 1
 %title Welcome to Hazelnut
+%category #6aa8f0 Basics
 %% Lines starting with %% are comments and are ignored.
 
 %chapter Getting started
+%tag Basics
 Hazelnut is a small, quiet place for your notes. A {b|notebook} is a single file, and it holds {b|chapters}, which you'll find in the sidebar on the left.
 
 Select some text and use the toolbar on the right, right-click it, or use the keyboard:
@@ -20,11 +22,55 @@ Underlines come in {u|solid}, {u=double|double}, {u=dotted|dotted}, {u=dashed|da
 With nothing selected, pick a style and just keep typing — it applies to what you write next.
 
 %chapter Chapters
-Press Ctrl+T or the {b|+} next to "Chapters" to add a new one. Right-click a chapter in the sidebar to move or delete it. Ctrl+PgUp / Ctrl+PgDn flips between chapters.
+%tag Basics
+Press Ctrl+T or the {b|+} next to "Chapters" to add a new one. {b|Drag} a chapter in the sidebar to reorder it, or right-click it to delete it. Ctrl+PgUp / Ctrl+PgDn flips between chapters.
 
 Click a chapter's title at the top of the page to rename it.
+
+Chapters can be filed under a {b|category}. Click the tag next to a chapter's title to pick or create one. Each category has a color, and the sidebar groups chapters by category. The gear next to "Chapters" lets you add, rename, recolor, reorder and delete categories.
+
+%chapter Headings, lists and callouts
+%tag Basics
+Start a line with {b|#}, {b|##} or {b|###} and a space to make it a heading:
+
+## A heading
+### A smaller heading
+
+Start a line with {b|-} and a space for a bullet list. Press Enter to add the next item, or Enter on an empty item to end the list. Indent with spaces or Tab to nest:
+
+- Coffee
+- Tea
+  - Green
+  - Black
+
+Use {b|- [ ]} for a checklist, and click a box to tick it:
+
+- [x] Write the welcome notes
+- [ ] Try a checklist
+- [ ] Export this notebook as a PDF
+
+> [!blue] Start a line with {b|> [!]} and a space to make a {b|callout}: a tinted box to make something stand out. The next lines starting with {b|> [!]} continue it.
+> [!] Pick its color with the callout button on the toolbar, or write it in brackets on the first line, like {b|[!green]}, {b|[!pink]} or any {b|[!#hex]} color.
+
+> [!yellow] Lists and headings work inside callouts too:
+> [!] - [ ] like this
+
+You can also use the {b|H}, list, checklist and callout buttons at the top of the toolbar, or the right-click menu. They apply to every selected line.
+
+To see or edit all the formatting as plain text, switch to the code view with the {b|</>} button at the bottom of the toolbar (Ctrl+/).
 
 %chapter Saving
 Ctrl+S saves, Ctrl+Shift+S saves a copy somewhere else, Ctrl+O opens another notebook. You can also drop a {i|.hzn} file onto the window.
 
 Notebooks are plain text, so they're easy to back up, diff and sync. A bold word is written as \{b|word\}, a red one as \{fg=#ef6f6c|word\}. See {u|FORMAT.md} for the details.
+
+Use the {b|Aa} toolbar button (Ctrl+Shift+M) for literal typing in normal mode: only newly entered characters stay literal. Existing formatting stays rendered, and literal text remains literal when the toggle is off.
+
+
+Code blocks keep source code literal and add syntax colors. Use the toolbar's code block button to choose a language, or write fences like these:
+
+```python
+def greet(name):
+    # Code stays literal inside this block.
+    return f"Hello, {name}!"
+```

@@ -58,6 +58,12 @@ pub fn highlight_display(bg: Color32) -> Color32 {
         .unwrap_or(bg)
 }
 
+pub const FONT_REGULAR: &[u8] = include_bytes!("../assets/fonts/NotoSans-Regular.ttf");
+pub const FONT_MEDIUM: &[u8] = include_bytes!("../assets/fonts/NotoSans-Medium.ttf");
+pub const FONT_BOLD: &[u8] = include_bytes!("../assets/fonts/NotoSans-Bold.ttf");
+pub const FONT_ITALIC: &[u8] = include_bytes!("../assets/fonts/NotoSans-Italic.ttf");
+pub const FONT_BOLD_ITALIC: &[u8] = include_bytes!("../assets/fonts/NotoSans-BoldItalic.ttf");
+
 pub fn family(bold: bool, italic: bool) -> FontFamily {
     match (bold, italic) {
         (false, false) => FontFamily::Proportional,
@@ -79,11 +85,11 @@ pub fn install(ctx: &egui::Context) {
 fn install_fonts(ctx: &egui::Context) {
     let mut fonts = FontDefinitions::default();
     let faces: [(&str, &'static [u8]); 5] = [
-        ("noto-regular", include_bytes!("../assets/fonts/NotoSans-Regular.ttf")),
-        ("noto-medium", include_bytes!("../assets/fonts/NotoSans-Medium.ttf")),
-        ("noto-bold", include_bytes!("../assets/fonts/NotoSans-Bold.ttf")),
-        ("noto-italic", include_bytes!("../assets/fonts/NotoSans-Italic.ttf")),
-        ("noto-bold-italic", include_bytes!("../assets/fonts/NotoSans-BoldItalic.ttf")),
+        ("noto-regular", FONT_REGULAR),
+        ("noto-medium", FONT_MEDIUM),
+        ("noto-bold", FONT_BOLD),
+        ("noto-italic", FONT_ITALIC),
+        ("noto-bold-italic", FONT_BOLD_ITALIC),
     ];
     for (name, bytes) in faces {
         fonts.font_data.insert(name.to_owned(), Arc::new(FontData::from_static(bytes)));
@@ -189,4 +195,10 @@ fn install_style(ctx: &egui::Context) {
 
         w.open = w.hovered;
     });
+}
+
+/// Reuse egui's bundled monospace face when embedding code in PDFs.
+pub fn mono_font_bytes() -> &'static [u8] {
+    static FONTS: std::sync::OnceLock<FontDefinitions> = std::sync::OnceLock::new();
+    FONTS.get_or_init(FontDefinitions::default).font_data["Hack"].font.as_ref()
 }

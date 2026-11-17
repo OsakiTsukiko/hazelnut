@@ -5,9 +5,28 @@ A small, minimalist rich-text notebook for the desktop, written in Rust.
 - **Home screen.** Create or open a notebook. Your **starred** notebooks are
   listed above the **recent** ones.
 - **Notebooks and chapters.** A notebook is one `.hzn` file. Its chapters are
-  the pages you see in the sidebar.
+  the pages you see in the sidebar. Drag chapters to reorder them, and file
+  them under colored **categories**, which group them in the sidebar.
 - **Inline formatting.** Bold, italic, underline (solid, double, dotted,
   dashed, wavy, zig-zag), strikethrough, text color and highlight color.
+- **Headings and lists.** Start a line with `#`/`##`/`###`, `- ` or `- [ ] `
+  (or use the toolbar) for headings, bullet lists and clickable checklists.
+- **Callouts.** Start lines with `> [!] ` for a tinted box; color it from the
+  toolbar or with `> [!blue]`, `> [!#d46ab4]` etc.
+- **Literal text.** The `Aa` toolbar toggle (Ctrl+Shift+M), also in Settings,
+  backslash-escapes formatting characters as they are typed or pasted and stops
+  automatic list/callout continuation while enabled. Existing formatting stays
+  rendered. Literal characters stay literal after toggling off, saving, reopening
+  and exporting to PDF.
+- **Code blocks.** Fenced blocks such as ` ```rust ` or ` ```python ` use
+  monospace text and syntax colors. Insert one from the `{ }` toolbar button
+  and choose its language, or press Ctrl+Alt+K for a plain block. Code stays
+  literal and exports with colors to PDF.
+- **Code view.** Switch between the normal view and a code view (the `</>` button at the bottom of the toolbar,
+  or Ctrl+/) that shows and edits a chapter as plain text with all its
+  formatting symbols, exactly as stored in the file.
+- **PDF export.** Export the whole notebook (with a contents page) or a
+  single chapter as a PDF, formatted for paper.
 - **Plain-text file format.** Notebooks are readable and easy to diff. See
   [FORMAT.md](FORMAT.md).
 - **Companions.** Pick a pixel-art animal in Settings (fox, rabbits, deer,
@@ -29,8 +48,17 @@ cargo run --release -- notes.hzn    # opens notes.hzn, or creates it on first sa
 |------------------------|-------------------|
 | Bold / Italic / Underline | Ctrl+B / Ctrl+I / Ctrl+U |
 | Strikethrough          | Ctrl+Shift+X      |
-| Clear formatting       | Ctrl+\            |
+| Clear text formatting  | Ctrl+\ or Ctrl+Space |
+| Insert code block | Ctrl+Alt+K |
+| Normal text (no heading / list / callout) | Ctrl+Shift+Space |
+| Clear all formatting   | Ctrl+Shift+\      |
 | New chapter            | Ctrl+T            |
+| Export as PDF          | Ctrl+E            |
+| Heading 1 / 2 / 3      | Ctrl+Alt+1 / 2 / 3 |
+| Normal text            | Ctrl+Alt+0        |
+| Bullet list / checklist| Ctrl+Shift+L / Ctrl+Shift+K |
+| Callout on / off       | Ctrl+Shift+Q      |
+| Normal / code view     | Ctrl+/            |
 | Next / previous chapter| Ctrl+PgDn / Ctrl+PgUp |
 | Save / Save as         | Ctrl+S / Ctrl+Shift+S |
 | Open / New notebook    | Ctrl+O / Ctrl+N   |
@@ -38,7 +66,8 @@ cargo run --release -- notes.hzn    # opens notes.hzn, or creates it on first sa
 | Settings               | Ctrl+,            |
 
 If you pick a style with no text selected, it applies to what you type next.
-Right-click a chapter to move or delete it. Star a notebook from the home
+Drag a chapter to reorder it within its category; right-click it to change
+its category or delete it. Manage categories with the gear next to "Chapters". Star a notebook from the home
 screen or with the star next to its file name in the sidebar. You can also drop a `.hzn` file
 onto the window to open it.
 

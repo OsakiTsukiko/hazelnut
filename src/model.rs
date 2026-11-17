@@ -10,6 +10,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 /// Inline formatting of a single character.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Style {
+    /// This syntax character has a backslash escape in the file.
+    pub escaped: bool,
     pub bold: bool,
     pub italic: bool,
     /// Underline pattern, if underlined.
@@ -124,6 +126,8 @@ pub struct Chapter {
     pub text: String,
     /// Exactly one entry per `char` in `text`.
     pub styles: Vec<Style>,
+    /// The [`Category`] this chapter is filed under, by runtime id.
+    pub category: Option<u64>,
 }
 
 impl Chapter {
@@ -138,6 +142,7 @@ impl Chapter {
             title: title.into(),
             text,
             styles,
+            category: None,
         }
     }
 
@@ -146,10 +151,31 @@ impl Chapter {
     }
 }
 
+/// A named, colored group of chapters. Each chapter has at most one.
+#[derive(Clone, Debug)]
+pub struct Category {
+    /// Runtime-only identity (not saved); chapters refer to it.
+    pub id: u64,
+    pub name: String,
+    pub color: Color32,
+}
+
+impl Category {
+    pub fn new(name: impl Into<String>, color: Color32) -> Self {
+        Self {
+            id: NEXT_ID.fetch_add(1, Ordering::Relaxed),
+            name: name.into(),
+            color,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Notebook {
     pub title: String,
     pub chapters: Vec<Chapter>,
+    /// In display order. Uncategorized chapters come before all of them.
+    pub categories: Vec<Category>,
 }
 
 impl Notebook {
@@ -157,7 +183,37 @@ impl Notebook {
         Self {
             title: title.into(),
             chapters: vec![Chapter::new("")],
+            categories: Vec::new(),
         }
+    }
+
+    pub fn category(&self, id: Option<u64>) -> Option<&Category> {
+        id.and_then(|id| self.categories.iter().find(|c| c.id == id))
+    }
+
+    pub fn category_mut(&mut self, id: u64) -> Option<&mut Category> {
+        self.categories.iter_mut().find(|c| c.id == id)
+    }
+
+    /// Sort key of a chapter's group: 0 = uncategorized, then categories in order.
+    pub fn group_of(&self, ch: &Chapter) -> usize {
+        ch.category
+            .and_then(|id| self.categories.iter().position(|c| c.id == id))
+            .map_or(0, |i| i + 1)
+    }
+
+    /// Drop dangling category references and keep chapters ordered by group
+    /// (stable, so the order within a group is preserved).
+    pub fn normalize(&mut self) {
+        let ids: Vec<u64> = self.categories.iter().map(|c| c.id).collect();
+        for ch in &mut self.chapters {
+            if ch.category.is_some_and(|id| !ids.contains(&id)) {
+                ch.category = None;
+            }
+        }
+        let mut chapters = std::mem::take(&mut self.chapters);
+        chapters.sort_by_key(|ch| self.group_of(ch));
+        self.chapters = chapters;
     }
 
     /// The notebook shown on first launch, demonstrating the features.

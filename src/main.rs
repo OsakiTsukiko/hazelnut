@@ -2,10 +2,13 @@
 
 mod app;
 mod autosave;
+mod blocks;
+mod code;
 mod edit;
 mod format;
 mod library;
 mod model;
+mod pdf;
 mod pets;
 mod render;
 mod settings;

@@ -10,12 +10,14 @@
 //! Buy {b|milk} and {i,fg=#ef6f6c|tomatoes}.
 //! ```
 
-use crate::model::{Chapter, LineStyle, Notebook, Style};
+use crate::model::{Category, Chapter, LineStyle, Notebook, Style};
 use eframe::egui::Color32;
 use std::fmt::Write as _;
 
 pub const VERSION: u32 = 1;
 pub const EXTENSION: &str = "hzn";
+/// Color for categories whose `%category` line has none.
+const DEFAULT_CATEGORY_COLOR: Color32 = Color32::from_rgb(0x8c, 0x88, 0x80);
 
 #[derive(Debug)]
 pub enum ParseError {
@@ -40,12 +42,33 @@ pub fn serialize(nb: &Notebook) -> String {
     let mut out = String::new();
     let _ = writeln!(out, "%hazelnut {VERSION}");
     let _ = writeln!(out, "%title {}", one_line(&nb.title));
+    for cat in &nb.categories {
+        let _ = writeln!(out, "%category {} {}", color_hex(cat.color), one_line(&cat.name));
+    }
     for ch in &nb.chapters {
         out.push('\n');
         let _ = writeln!(out, "%chapter {}", one_line(&ch.title));
+        if let Some(cat) = nb.category(ch.category) {
+            let _ = writeln!(out, "%tag {}", one_line(&cat.name));
+        }
         write_body(&mut out, &ch.text, &ch.styles);
     }
     out
+}
+
+/// A chapter body as `.hzn` markup: inline styles as `{spec|text}`, with
+/// escapes (the code view shows and edits this).
+pub fn body_markup(text: &str, styles: &[Style]) -> String {
+    let mut out = String::new();
+    write_body(&mut out, text, styles);
+    out.strip_suffix('\n').map(str::to_owned).unwrap_or(out)
+}
+
+/// Parse body markup (see [`body_markup`]) back into text and styles.
+pub fn parse_body(src: &str) -> (String, Vec<Style>) {
+    let lines: Vec<&str> = src.split('\n').collect();
+    let ch = build_chapter(String::new(), &lines);
+    (ch.text, ch.styles)
 }
 
 fn one_line(s: &str) -> String {
@@ -54,12 +77,20 @@ fn one_line(s: &str) -> String {
 
 fn write_body(out: &mut String, text: &str, styles: &[Style]) {
     // Trailing blank lines are not significant in the format.
-    let body = text.trim_end_matches(['\n', ' ', '\t']);
+    let code = crate::code::lines(text, styles);
+    let body = if code.last().is_some_and(Option::is_some) { text } else { text.trim_end_matches(['\n', ' ', '\t']) };
     if body.is_empty() {
         return;
     }
+    let mut fences = crate::code::Fences::default();
     let mut idx = 0usize; // char index into `styles`
     for line in body.split('\n') {
+        if fences.next(line, styles.get(idx..).unwrap_or(&[])).is_some() {
+            out.push_str(line);
+            out.push('\n');
+            idx += line.chars().count() + 1;
+            continue;
+        }
         let mut rendered = String::new();
         let mut run = String::new();
         let mut run_style: Option<Style> = None;
@@ -88,21 +119,23 @@ fn flush_run(out: &mut String, run: &str, style: Option<Style>) {
     if run.is_empty() {
         return;
     }
-    let style = style.unwrap_or_default();
+    let mut style = style.unwrap_or_default();
+    let escaped = style.escaped;
+    style.escaped = false;
     if style.is_plain() {
-        escape_into(out, run);
+        escape_into(out, run, escaped);
     } else {
         out.push('{');
         out.push_str(&style_spec(&style));
         out.push('|');
-        escape_into(out, run);
+        escape_into(out, run, escaped);
         out.push('}');
     }
 }
 
-fn escape_into(out: &mut String, s: &str) {
+fn escape_into(out: &mut String, s: &str, escaped: bool) {
     for c in s.chars() {
-        if matches!(c, '\\' | '{' | '}') {
+        if matches!(c, '\\' | '{' | '}') || (escaped && crate::blocks::is_syntax_char(c)) {
             out.push('\\');
         }
         out.push(c);
@@ -175,10 +208,23 @@ pub fn parse(src: &str) -> Result<Notebook, ParseError> {
     let mut nb = Notebook {
         title: String::from("Untitled notebook"),
         chapters: Vec::new(),
+        categories: Vec::new(),
     };
     let mut current: Option<(String, Vec<&str>)> = None;
+    // Category name per chapter, resolved once all categories are known.
+    let mut tags: Vec<Option<String>> = Vec::new();
+    let mut tag: Option<String> = None;
 
+    let mut fences = crate::code::Fences::default();
     for line in lines {
+        if fences.next(line, &[]).is_some() {
+            if let Some((_, body)) = &mut current {
+                body.push(line);
+            } else {
+                current = Some((String::from("Untitled"), vec![line]));
+            }
+            continue;
+        }
         if line.starts_with("%%") {
             continue; // comment
         }
@@ -189,8 +235,24 @@ pub fn parse(src: &str) -> Result<Notebook, ParseError> {
                 "chapter" => {
                     if let Some((t, body)) = current.take() {
                         nb.chapters.push(build_chapter(t, &body));
+                        tags.push(tag.take());
                     }
+                    tag = None;
                     current = Some((arg.trim().to_owned(), Vec::new()));
+                }
+                "category" => {
+                    let arg = arg.trim();
+                    let (color, name) = match arg.split_once(' ') {
+                        Some((c, n)) if parse_hex(c).is_some() => (parse_hex(c), n.trim()),
+                        _ => (None, arg),
+                    };
+                    if !name.is_empty() && !nb.categories.iter().any(|c| c.name == name) {
+                        nb.categories.push(Category::new(name, color.unwrap_or(DEFAULT_CATEGORY_COLOR)));
+                    }
+                }
+                "tag" if current.is_some() => {
+                    let name = arg.trim();
+                    tag = (!name.is_empty()).then(|| name.to_owned());
                 }
                 _ => {} // unknown directives are ignored (forward compatibility)
             }
@@ -207,27 +269,51 @@ pub fn parse(src: &str) -> Result<Notebook, ParseError> {
     }
     if let Some((t, body)) = current.take() {
         nb.chapters.push(build_chapter(t, &body));
+        tags.push(tag.take());
+    }
+    for (ch, tag) in nb.chapters.iter_mut().zip(tags) {
+        let Some(name) = tag else { continue };
+        let id = match nb.categories.iter().find(|c| c.name == name) {
+            Some(c) => c.id,
+            None => {
+                // Used but never declared: create it with a default color.
+                let c = Category::new(name, DEFAULT_CATEGORY_COLOR);
+                let id = c.id;
+                nb.categories.push(c);
+                id
+            }
+        };
+        ch.category = Some(id);
     }
     if nb.chapters.is_empty() {
         nb.chapters.push(Chapter::new("Untitled"));
     }
+    nb.normalize();
     Ok(nb)
 }
 
 fn build_chapter(title: String, lines: &[&str]) -> Chapter {
     let mut end = lines.len();
-    while end > 0 && lines[end - 1].trim().is_empty() {
-        end -= 1;
+    let mut state = crate::code::Fences::default();
+    let ends_in_code = lines.iter().map(|line| state.next(line, &[])).last().flatten().is_some();
+    if !ends_in_code {
+        while end > 0 && lines[end - 1].trim().is_empty() { end -= 1; }
     }
     let mut text = String::new();
     let mut styles = Vec::new();
+    let mut fences = crate::code::Fences::default();
     for (i, line) in lines[..end].iter().enumerate() {
         if i > 0 {
             let st = styles.last().copied().unwrap_or_default();
             text.push('\n');
             styles.push(st);
         }
-        parse_line(line, &mut text, &mut styles);
+        if fences.next(line, &[]).is_some() {
+            text.push_str(line);
+            styles.extend(std::iter::repeat_n(Style::default(), line.chars().count()));
+        } else {
+            parse_line(line, &mut text, &mut styles);
+        }
     }
     Chapter::with_content(title, text, styles)
 }
@@ -242,7 +328,10 @@ fn parse_line(line: &str, text: &mut String, styles: &mut Vec<Style>) {
     while let Some(c) = chars.next() {
         let cur = span.unwrap_or_default();
         match c {
-            '\\' => push(chars.next().unwrap_or('\\'), cur),
+            '\\' => {
+                let c = chars.next().unwrap_or('\\');
+                push(c, Style { escaped: crate::blocks::is_syntax_char(c), ..cur });
+            }
             '{' if span.is_none() => {
                 // Look ahead for `spec|`; otherwise treat `{` literally.
                 let mut look = chars.clone();
@@ -275,6 +364,8 @@ fn parse_spec(spec: &str) -> Style {
     let mut s = Style::default();
     for tok in spec.split(',').map(str::trim) {
         match tok {
+            // Compatibility with earlier notes; saving uses backslash escapes.
+            "literal" => s.escaped = true,
             "b" => s.bold = true,
             "i" => s.italic = true,
             "u" => s.underline = Some(LineStyle::Solid),
@@ -323,6 +414,7 @@ mod tests {
         let nb = Notebook {
             title: "Notes".into(),
             chapters: vec![chapter(text, styles.clone()), chapter("", vec![])],
+            categories: Vec::new(),
         };
         let out = serialize(&nb);
         let back = parse(&out).unwrap();
@@ -348,18 +440,119 @@ mod tests {
 }
 
 #[cfg(test)]
+mod markup_tests {
+    use super::*;
+
+    #[test]
+    fn body_markup_roundtrips() {
+        let nb = parse(include_str!("../assets/welcome.hzn")).unwrap();
+        for ch in &nb.chapters {
+            let src = body_markup(&ch.text, &ch.styles);
+            let (text, styles) = parse_body(&src);
+            assert_eq!(text, ch.text);
+            let visible = |t: &str, s: &[Style]| -> Vec<Style> {
+                t.chars().zip(s).filter(|(c, _)| *c != '\n').map(|(_, s)| *s).collect()
+            };
+            assert_eq!(visible(&text, &styles), visible(&ch.text, &ch.styles));
+        }
+        assert_eq!(parse_body("%x {b|y}").0, "%x y");
+    }
+}
+
+#[cfg(test)]
+mod category_tests {
+    use super::*;
+
+    #[test]
+    fn categories_roundtrip_and_group() {
+        let src = "%hazelnut 1\n%category #6aa8f0 Ideas\n%category Plain\n\
+                   %chapter A\n%tag Ideas\nbody\n%chapter B\nfree\n%chapter C\n%tag Undeclared\n";
+        let nb = parse(src).unwrap();
+        assert_eq!(nb.categories.len(), 3);
+        assert_eq!(nb.categories[0].color, Color32::from_rgb(0x6a, 0xa8, 0xf0));
+        assert_eq!(nb.categories[1].name, "Plain");
+        // Uncategorized first, then by category order.
+        let titles: Vec<_> = nb.chapters.iter().map(|c| c.title.as_str()).collect();
+        assert_eq!(titles, ["B", "A", "C"]);
+        assert_eq!(nb.category(nb.chapters[1].category).unwrap().name, "Ideas");
+        assert_eq!(nb.chapters[1].text, "body");
+
+        let again = parse(&serialize(&nb)).unwrap();
+        let names = |n: &Notebook| -> Vec<Option<String>> {
+            n.chapters.iter().map(|c| n.category(c.category).map(|k| k.name.clone())).collect()
+        };
+        assert_eq!(names(&again), names(&nb));
+        assert_eq!(again.categories.len(), 3);
+        assert_eq!(again.categories[0].color, nb.categories[0].color);
+    }
+}
+
+#[cfg(test)]
 mod welcome_tests {
     use super::*;
 
     #[test]
     fn welcome_notebook_roundtrips() {
         let nb = parse(include_str!("../assets/welcome.hzn")).unwrap();
-        assert_eq!(nb.chapters.len(), 3);
+        assert_eq!(nb.chapters.len(), 4);
         let again = parse(&serialize(&nb)).unwrap();
         for (a, b) in nb.chapters.iter().zip(&again.chapters) {
             assert_eq!(a.title, b.title);
             assert_eq!(a.text, b.text);
             assert_eq!(a.styles, b.styles);
         }
+    }
+}
+
+
+#[cfg(test)]
+mod escape_tests {
+    use super::*;
+    use crate::{blocks, edit};
+
+    #[test]
+    fn typing_escapes_match_manual_code_and_leave_ordinary_characters_alone() {
+        let text = "# Title\n- item\n> [!blue] note\nordinary words é";
+        let change = edit::Change { at: 0, removed: 0, inserted: text.chars().count() };
+        let styles = edit::apply_typing(&[], change, None, text, true);
+        assert_eq!(body_markup(text, &styles), r"\# Title
+\- item
+\> \[\!blue\] note
+ordinary words é");
+        let markup = body_markup(text, &styles);
+        let (decoded, decoded_styles) = parse_body(&markup);
+        assert_eq!(decoded, text);
+        assert_eq!(decoded_styles, styles);
+        for (start, line) in blocks::lines(&decoded) {
+            let b = blocks::parse_styled(line, &decoded_styles[start..]);
+            assert_eq!(b.kind, blocks::Kind::Plain);
+            assert!(!b.quoted);
+        }
+        assert!(text.chars().zip(&styles).all(|(c, s)| s.escaped == blocks::is_syntax_char(c)));
+        let (text, styles) = parse_body(r"\# example");
+        assert_eq!(blocks::parse_styled(&text, &styles).kind, blocks::Kind::Plain);
+        assert_eq!(body_markup(&text, &styles), "\\# example");
+    }
+
+    #[test]
+    fn escaped_characters_can_still_have_advanced_styles() {
+        let (text, styles) = parse_body(r"{b,fg=#ff0000|\# example}");
+        assert_eq!(text, "# example");
+        assert!(styles[0].escaped);
+        assert!(styles.iter().all(|s| s.bold && s.fg == Some(Color32::RED)));
+        let encoded = body_markup(&text, &styles);
+        assert!(!encoded.contains("literal"));
+        assert!(encoded.contains(r"\#"));
+        assert_eq!(parse_body(&encoded), (text, styles));
+    }
+
+    #[test]
+    fn literal_toggle_does_not_change_spaces_or_existing_markers() {
+        let text = "# heading";
+        let original = vec![Style::default()];
+        let styles = edit::apply_typing(&original,
+            edit::Change { at: 1, removed: 0, inserted: 8 }, None, text, true);
+        assert!(styles.iter().all(|s| !s.escaped));
+        assert_eq!(blocks::parse_styled(text, &styles).kind, blocks::Kind::Heading(1));
     }
 }
